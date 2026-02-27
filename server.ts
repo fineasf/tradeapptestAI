@@ -78,12 +78,16 @@ async function startServer() {
       const symbols = typeof req.query.symbols === "string"
         ? req.query.symbols.split(",").map((symbol) => symbol.trim()).filter(Boolean)
         : [];
+      const selectedSymbol = typeof req.query.selectedSymbol === "string" ? req.query.selectedSymbol : undefined;
+      const includeMacro = typeof req.query.includeMacro === "string"
+        ? req.query.includeMacro.toLowerCase() !== "false"
+        : undefined;
       const region = typeof req.query.region === "string" ? req.query.region : undefined;
       const lang = typeof req.query.lang === "string" ? req.query.lang : undefined;
       const parsedLimit = Number(req.query.limit);
       const limit = Number.isFinite(parsedLimit) ? parsedLimit : undefined;
 
-      const news = await getNews({ symbols, region, lang, limit });
+      const news = await getNews({ symbols, selectedSymbol, includeMacro, region, lang, limit });
       res.json(news);
     } catch (error) {
       console.error("Error fetching news:", error);

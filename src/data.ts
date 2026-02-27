@@ -18,6 +18,7 @@ export const mockNews: NewsItem[] = [
     publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     url: "https://example.com/fed-rate-cuts",
     symbols: ["SPY", "QQQ"],
+    topicType: "Macro",
     source: "Financial Times",
     language: "en"
   },
@@ -30,6 +31,7 @@ export const mockNews: NewsItem[] = [
     publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     url: "https://example.com/tech-regulatory-scrutiny",
     symbols: ["AAPL", "MSFT"],
+    topicType: "Ticker-specific",
     source: "Reuters",
     language: "en"
   },
@@ -42,6 +44,7 @@ export const mockNews: NewsItem[] = [
     publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     url: "https://example.com/oil-prices-surge",
     symbols: ["XOM", "CVX"],
+    topicType: "Macro",
     source: "Bloomberg",
     language: "en"
   }

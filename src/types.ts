@@ -15,6 +15,7 @@ export interface NewsItem {
   publishedAt: string;
   url: string;
   symbols: string[];
+  topicType: "Ticker-specific" | "Macro";
   source: string;
   language: string;
 }
