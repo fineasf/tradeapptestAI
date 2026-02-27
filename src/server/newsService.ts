@@ -142,6 +142,7 @@ function fallbackNews(requestedSymbols: string[], language: string): ScoredNewsI
       const matchedSymbols = requestedSymbols.length > 0
         ? item.symbols.filter((symbol) => requestedSymbols.includes(symbol))
         : item.symbols;
+      const itemSymbols = matchedSymbols.length > 0 ? matchedSymbols : item.symbols;
 
       const title = item.title;
       const summary = item.summary;
@@ -152,11 +153,10 @@ function fallbackNews(requestedSymbols: string[], language: string): ScoredNewsI
       return {
         ...item,
         id: createHash("sha256").update(`${item.url}|${item.title}|fallback|${index}`).digest("hex"),
-        symbols: matchedSymbols,
+        symbols: itemSymbols,
         relevanceScore: scoreRelevance({ title, summary, publishedAt, matchedSymbols, impact, sentiment })
       };
-    })
-    .filter((item) => requestedSymbols.length === 0 || item.symbols.length > 0);
+    });
 }
 
 function dedupeNews(items: ScoredNewsItem[]): ScoredNewsItem[] {
