@@ -12,11 +12,8 @@ export interface NewsItem {
   summary: string;
   impact: "High" | "Medium" | "Low";
   sentiment: "Positive" | "Negative" | "Neutral";
-  publishedAt: string;
-  url: string;
-  symbols: string[];
+  time: string;
   source: string;
-  language: string;
 }
 
 export interface AIAnalysisResult {

@@ -4,15 +4,14 @@ import { TopBar } from "./components/TopBar";
 import { Chart } from "./components/Chart";
 import { NewsPanel } from "./components/NewsPanel";
 import { AIAnalysis } from "./components/AIAnalysis";
-import { mockAIAnalysis } from "./data";
-import { AIAnalysisResult, NewsItem, Stock } from "./types";
+import { mockNews, mockAIAnalysis } from "./data";
+import { AIAnalysisResult, Stock } from "./types";
 import { GoogleGenAI, Type } from "@google/genai";
 
 export default function App() {
   const [selectedSymbol, setSelectedSymbol] = useState("NASDAQ:NVDA");
   const [watchlist, setWatchlist] = useState<Stock[]>([]);
   const [analysis, setAnalysis] = useState<AIAnalysisResult | null>(null);
-  const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load watchlist from local storage on mount
@@ -75,25 +74,6 @@ export default function App() {
       }
     });
   };
-
-  useEffect(() => {
-    async function fetchNews() {
-      try {
-        const response = await fetch(`/api/news?symbols=${encodeURIComponent(selectedSymbol)}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch news: ${response.status}`);
-        }
-
-        const result = (await response.json()) as NewsItem[];
-        setNews(result);
-      } catch (error) {
-        console.error("Failed to fetch news", error);
-        setNews([]);
-      }
-    }
-
-    fetchNews();
-  }, [selectedSymbol]);
 
   useEffect(() => {
     async function fetchAnalysis() {
@@ -181,7 +161,7 @@ export default function App() {
               />
             </div>
             <div className="h-64 shrink-0">
-              <NewsPanel news={news} />
+              <NewsPanel news={mockNews} />
             </div>
           </div>
           

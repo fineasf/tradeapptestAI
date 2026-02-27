@@ -15,11 +15,8 @@ export const mockNews: NewsItem[] = [
     summary: "Federal Reserve officials indicated that they might begin cutting interest rates later this year if inflation continues to cool down, boosting market sentiment.",
     impact: "High",
     sentiment: "Positive",
-    publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    url: "https://example.com/fed-rate-cuts",
-    symbols: ["SPY", "QQQ"],
-    source: "Financial Times",
-    language: "en"
+    time: "2 hours ago",
+    source: "Financial Times"
   },
   {
     id: "2",
@@ -27,11 +24,8 @@ export const mockNews: NewsItem[] = [
     summary: "The European Union is preparing a new wave of antitrust investigations targeting major US technology companies over data privacy and market dominance.",
     impact: "Medium",
     sentiment: "Negative",
-    publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    url: "https://example.com/tech-regulatory-scrutiny",
-    symbols: ["AAPL", "MSFT"],
-    source: "Reuters",
-    language: "en"
+    time: "4 hours ago",
+    source: "Reuters"
   },
   {
     id: "3",
@@ -39,11 +33,8 @@ export const mockNews: NewsItem[] = [
     summary: "Crude oil prices jumped 3% today as geopolitical tensions in the Middle East escalated, raising concerns about supply disruptions.",
     impact: "High",
     sentiment: "Negative",
-    publishedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    url: "https://example.com/oil-prices-surge",
-    symbols: ["XOM", "CVX"],
-    source: "Bloomberg",
-    language: "en"
+    time: "5 hours ago",
+    source: "Bloomberg"
   }
 ];
 

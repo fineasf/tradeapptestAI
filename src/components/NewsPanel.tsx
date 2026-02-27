@@ -1,20 +1,9 @@
-import { Globe, AlertTriangle } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Globe, AlertTriangle, TrendingUp, TrendingDown } from "lucide-react";
 import { NewsItem } from "../types";
 import { cn } from "../lib/utils";
 
 interface NewsPanelProps {
   news: NewsItem[];
-}
-
-function formatPublishedAt(publishedAt: string): string {
-  const date = new Date(publishedAt);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Unknown time";
-  }
-
-  return `${formatDistanceToNow(date, { addSuffix: true })}`;
 }
 
 export function NewsPanel({ news }: NewsPanelProps) {
@@ -26,19 +15,9 @@ export function NewsPanel({ news }: NewsPanelProps) {
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {news.map((item) => (
-          <div key={item.id} className="bg-[#2A2E39] rounded-lg p-3 border border-[#363A45] hover:border-blue-500/50 transition-colors">
+          <div key={item.id} className="bg-[#2A2E39] rounded-lg p-3 border border-[#363A45] hover:border-blue-500/50 transition-colors cursor-pointer">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs text-gray-400">
-                {formatPublishedAt(item.publishedAt)} •{" "}
-                <a
-                  className="text-blue-400 hover:text-blue-300 underline"
-                  href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {item.source}
-                </a>
-              </span>
+              <span className="text-xs text-gray-400">{item.time} • {item.source}</span>
               <div className="flex gap-2">
                 <span className={cn(
                   "text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider flex items-center gap-1",
