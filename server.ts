@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import TradingView from "@mathieuc/tradingview";
+import { getNews } from "./src/server/newsService";
 
 async function startServer() {
   const app = express();
@@ -69,6 +70,24 @@ async function startServer() {
       if (!res.headersSent) {
         res.status(500).json({ error: "Failed to fetch quotes" });
       }
+    }
+  });
+
+  app.get("/api/news", async (req, res) => {
+    try {
+      const symbols = typeof req.query.symbols === "string"
+        ? req.query.symbols.split(",").map((symbol) => symbol.trim()).filter(Boolean)
+        : [];
+      const region = typeof req.query.region === "string" ? req.query.region : undefined;
+      const lang = typeof req.query.lang === "string" ? req.query.lang : undefined;
+      const parsedLimit = Number(req.query.limit);
+      const limit = Number.isFinite(parsedLimit) ? parsedLimit : undefined;
+
+      const news = await getNews({ symbols, region, lang, limit });
+      res.json(news);
+    } catch (error) {
+      console.error("Error fetching news:", error);
+      res.status(500).json({ error: "Failed to fetch news" });
     }
   });
 
