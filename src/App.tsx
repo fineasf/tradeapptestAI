@@ -79,7 +79,12 @@ export default function App() {
   useEffect(() => {
     async function fetchNews() {
       try {
-        const response = await fetch(`/api/news?symbols=${encodeURIComponent(selectedSymbol)}`);
+        const params = new URLSearchParams({
+          symbols: selectedSymbol,
+          selectedSymbol,
+          includeMacro: "true"
+        });
+        const response = await fetch(`/api/news?${params.toString()}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch news: ${response.status}`);
         }

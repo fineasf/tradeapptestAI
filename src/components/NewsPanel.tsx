@@ -51,6 +51,12 @@ export function NewsPanel({ news }: NewsPanelProps) {
                 </span>
                 <span className={cn(
                   "text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider",
+                  item.topicType === "Ticker-specific" ? "bg-indigo-500/20 text-indigo-300" : "bg-cyan-500/20 text-cyan-300"
+                )}>
+                  {item.topicType}
+                </span>
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider",
                   item.sentiment === "Positive" ? "bg-emerald-500/20 text-emerald-400" :
                   item.sentiment === "Negative" ? "bg-rose-500/20 text-rose-400" :
                   "bg-gray-500/20 text-gray-400"
