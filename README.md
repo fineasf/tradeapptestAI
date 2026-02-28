@@ -2,19 +2,68 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Trade App Test AI
 
-This contains everything you need to run your app locally.
+This app shows market data, technical levels, and an AI report panel.
 
-View your app in AI Studio: https://ai.studio/apps/e8fcb596-ecf1-4c54-b850-67f92262edba
+## Run locally
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js 18+.
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+
+   ```bash
+   npm install
+   ```
+
+2. Create your local server env file from the template:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. Put your Gemini API key in `.env.local` (this is the exact position):
+
+   ```env
+   GEMINI_API_KEY="YOUR_REAL_KEY_HERE"
+   ```
+
+   - The key is read by `server.ts` only.
+   - Do **not** put API keys in frontend files such as `src/App.tsx`.
+
+4. (Optional) Choose model in `.env.local`:
+
+   ```env
+   GEMINI_MODEL="gemini-2.5-flash"
+   ```
+
+5. Start the app:
+
+   ```bash
+   npm run dev
+   ```
+
+6. Open `http://localhost:3000`.
+
+## How to activate the AI report
+
+- The AI report is activated automatically when `GEMINI_API_KEY` is present in your server env (`.env.local` or deployment env).
+- The frontend sends requests to `POST /api/analysis`.
+- If key/model is missing or provider fails, the UI shows explicit **"Analysis unavailable"** fallback messaging while technical levels still load.
+
+## API summary
+
+### `POST /api/analysis`
+
+Request body:
+
+```json
+{
+  "symbol": "NVDA",
+  "context": "Timeframe D"
+}
+```
+
+- `symbol` is required.
+- `context` is optional.
+- Server validates request fields, calls Gemini with server-side env vars, validates the AI output schema, and returns sanitized JSON only.
