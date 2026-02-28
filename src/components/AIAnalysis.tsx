@@ -34,7 +34,7 @@ export function AIAnalysis({ analysis, isLoading }: AIAnalysisProps) {
       <div className="p-4 border-b border-[#2A2E39] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-purple-400" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider">AI Analysis: {analysis.symbol}</h2>
+          <h2 className="text-sm font-bold text-white uppercase tracking-wider">AI Commentary: {analysis.symbol}</h2>
         </div>
         <div className={cn(
           "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1",
@@ -50,7 +50,7 @@ export function AIAnalysis({ analysis, isLoading }: AIAnalysisProps) {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         <div>
           <div className="flex justify-between items-end mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">AI Confidence Score</h3>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Commentary Confidence Score</h3>
             <span className="text-lg font-bold text-white">{analysis.confidence}%</span>
           </div>
           <div className="h-2 bg-[#2A2E39] rounded-full overflow-hidden">
@@ -65,6 +65,8 @@ export function AIAnalysis({ analysis, isLoading }: AIAnalysisProps) {
             />
           </div>
         </div>
+
+        <p className="text-[11px] text-gray-500">Numeric support/resistance levels are computed by the backend technical-levels engine.</p>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-[#2A2E39] rounded-lg p-3 border border-[#363A45]">

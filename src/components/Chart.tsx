@@ -7,6 +7,8 @@ import { cn } from '../lib/utils';
 
 interface ChartProps {
   symbol: string;
+  timeframe: string;
+  onTimeframeChange: (timeframe: string) => void;
   supportLevels?: number[];
   resistanceLevels?: number[];
   watchlist?: Stock[];
@@ -21,12 +23,11 @@ const TIMEFRAMES = [
   { label: '1h', value: '60' },
 ];
 
-export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watchlist = [], onToggleWatchlist }: ChartProps) {
+export function Chart({ symbol, timeframe, onTimeframeChange, supportLevels = [], resistanceLevels = [], watchlist = [], onToggleWatchlist }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const [loading, setLoading] = useState(false);
-  const [timeframe, setTimeframe] = useState('D');
 
   const isWatchlisted = watchlist.some(s => s.symbol === symbol);
 
@@ -35,7 +36,7 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({ 
+        chartRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
           height: chartContainerRef.current.clientHeight
         });
@@ -74,10 +75,9 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
       wickUpColor: '#26a69a',
       wickDownColor: '#ef5350',
     });
-    
+
     seriesRef.current = candlestickSeries;
 
-    // Fetch real data
     let isMounted = true;
     const fetchData = async () => {
       setLoading(true);
@@ -87,10 +87,8 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
           const result = await response.json();
           if (result.data && result.data.length > 0) {
             if (!isMounted) return;
-            // Format time correctly for lightweight-charts
             const formattedData = result.data.map((d: any) => ({
               ...d,
-              // TradingView returns unix timestamp in seconds, lightweight-charts expects YYYY-MM-DD or unix timestamp
               time: d.time
             }));
             candlestickSeries.setData(formattedData);
@@ -104,7 +102,6 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
       } catch (error) {
         console.error("Error fetching real chart data:", error);
         if (!isMounted) return;
-        // Fallback to generated data
         const startPrice = symbol.includes('NVDA') ? 700 : symbol.includes('TSLA') ? 200 : 150;
         const data = generateChartData(150, startPrice);
         candlestickSeries.setData(data);
@@ -117,13 +114,12 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
 
     fetchData();
 
-    // Add support/resistance lines
     supportLevels.forEach(level => {
       candlestickSeries.createPriceLine({
         price: level,
         color: '#26a69a',
         lineWidth: 2,
-        lineStyle: 2, // Dashed
+        lineStyle: 2,
         axisLabelVisible: true,
         title: 'Support',
       });
@@ -134,7 +130,7 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
         price: level,
         color: '#ef5350',
         lineWidth: 2,
-        lineStyle: 2, // Dashed
+        lineStyle: 2,
         axisLabelVisible: true,
         title: 'Resistance',
       });
@@ -153,16 +149,16 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
     <div className="w-full h-full relative bg-[#131722] rounded-lg overflow-hidden border border-[#2A2E39] flex flex-col">
       <div className="absolute top-4 left-4 z-10 flex items-center gap-3">
         <h2 className="text-2xl font-bold text-white tracking-tight">{symbol.split(':').pop() || symbol}</h2>
-        
+
         <div className="flex bg-[#2A2E39] rounded-lg p-0.5">
           {TIMEFRAMES.map(tf => (
             <button
               key={tf.value}
-              onClick={() => setTimeframe(tf.value)}
+              onClick={() => onTimeframeChange(tf.value)}
               className={cn(
                 "px-2 py-1 text-xs rounded font-medium transition-colors",
-                timeframe === tf.value 
-                  ? "bg-[#363A45] text-white" 
+                timeframe === tf.value
+                  ? "bg-[#363A45] text-white"
                   : "text-gray-400 hover:text-gray-200"
               )}
             >
@@ -172,7 +168,7 @@ export function Chart({ symbol, supportLevels = [], resistanceLevels = [], watch
         </div>
 
         {onToggleWatchlist && (
-          <button 
+          <button
             onClick={() => onToggleWatchlist({
               symbol,
               name: symbol,

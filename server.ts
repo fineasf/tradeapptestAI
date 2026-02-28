@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import TradingView from "@mathieuc/tradingview";
 import { getNews } from "./src/server/newsService";
+import { computeTechnicalLevels } from "./src/server/technicalLevels";
 
 async function startServer() {
   const app = express();
@@ -122,7 +123,8 @@ async function startServer() {
             open: p.open,
             high: p.max,
             low: p.min,
-            close: p.close
+            close: p.close,
+            volume: p.volume,
           })).reverse(); // lightweight-charts needs ascending order
           
           res.json({ data });
@@ -148,6 +150,70 @@ async function startServer() {
       
     } catch (error) {
       console.error("Error setting up TradingView client:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Internal server error" });
+      }
+    }
+  });
+
+  app.get("/api/levels/:symbol", async (req, res) => {
+    const symbol = req.params.symbol;
+    const timeframe = (req.query.timeframe as string) || "D";
+    const lookback = Math.max(50, Number(req.query.lookback) || 200);
+    const swingLookback = Math.max(2, Number(req.query.swingLookback) || 3);
+    const proximityPercent = Math.max(0.001, Number(req.query.proximityPercent) || 0.006);
+    const useVolumeConfirmation = req.query.useVolumeConfirmation !== "false";
+
+    try {
+      const client = new TradingView.Client();
+      const chart = new client.Session.Chart();
+
+      chart.setMarket(symbol, {
+        timeframe,
+        range: lookback,
+      });
+
+      chart.onUpdate(() => {
+        if (!chart.periods[0] || res.headersSent) return;
+
+        const candles = chart.periods
+          .map((period) => ({
+            time: period.time,
+            open: period.open,
+            high: period.max,
+            low: period.min,
+            close: period.close,
+            volume: period.volume,
+          }))
+          .reverse();
+
+        const result = computeTechnicalLevels(candles, {
+          swingLookback,
+          proximityPercent,
+          maxLevelsPerSide: 4,
+          useVolumeConfirmation,
+        });
+
+        res.json(result);
+        client.end();
+      });
+
+      chart.onError((err) => {
+        console.error("TradingView levels error:", err);
+        client.end();
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Failed to compute levels" });
+        }
+      });
+
+      setTimeout(() => {
+        if (!res.headersSent) {
+          client.end();
+          res.status(504).json({ error: "Timeout fetching levels" });
+        }
+      }, 5000);
+    } catch (error) {
+      console.error("Error setting up levels endpoint:", error);
       if (!res.headersSent) {
         res.status(500).json({ error: "Internal server error" });
       }
