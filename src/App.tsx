@@ -7,12 +7,10 @@ import { AIAnalysis } from "./components/AIAnalysis";
 import { mockAIAnalysis } from "./data";
 import {
   AIAnalysisResult,
-  AICommentaryResult,
   NewsItem,
   Stock,
   TechnicalLevelsResponse,
 } from "./types";
-import { GoogleGenAI, Type } from "@google/genai";
 
 export default function App() {
   const [selectedSymbol, setSelectedSymbol] = useState("NASDAQ:NVDA");
@@ -162,28 +160,27 @@ export default function App() {
       }
 
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `Provide trading commentary for ${shortSymbol}. Include signal, confidence score, summary and 3 key factors. Do not provide support or resistance prices.`,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                symbol: { type: Type.STRING },
-                signal: { type: Type.STRING },
-                confidence: { type: Type.NUMBER },
-                summary: { type: Type.STRING },
-                keyFactors: { type: Type.ARRAY, items: { type: Type.STRING } },
-              },
-              required: ["symbol", "signal", "confidence", "summary", "keyFactors"],
-            },
+        const response = await fetch("/api/analysis", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            symbol: shortSymbol,
+            context: `Timeframe ${timeframe}`,
+          }),
         });
 
-        if (response.text) {
-          const commentary = JSON.parse(response.text) as AICommentaryResult;
+        if (!response.ok) {
+          throw new Error(`Analysis unavailable: ${response.status}`);
+        }
+
+        const commentary = (await response.json()) as Pick<
+          AIAnalysisResult,
+          "symbol" | "signal" | "confidence" | "summary" | "keyFactors"
+        >;
+
+        if (commentary) {
           setAnalysis((prev) => ({
             symbol: commentary.symbol || shortSymbol,
             signal: commentary.signal,
@@ -202,8 +199,8 @@ export default function App() {
           confidence: 50,
           supportLevels: levels?.supportLevels ?? prev?.supportLevels ?? [],
           resistanceLevels: levels?.resistanceLevels ?? prev?.resistanceLevels ?? [],
-          summary: "AI commentary unavailable. Technical levels are still computed server-side.",
-          keyFactors: ["Commentary API unavailable", "Using deterministic technical levels", "Try again later"],
+          summary: "Analysis unavailable. Technical levels are still computed server-side.",
+          keyFactors: ["Analysis unavailable", "Using deterministic technical levels", "Try again later"],
         }));
       } finally {
         setIsLoading(false);

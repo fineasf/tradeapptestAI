@@ -1,12 +1,137 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import TradingView from "@mathieuc/tradingview";
+import { GoogleGenAI, Type } from "@google/genai";
+import dotenv from "dotenv";
 import { getNews } from "./src/server/newsService";
 import { computeTechnicalLevels } from "./src/server/technicalLevels";
+
+dotenv.config();
+
+type AnalysisRequest = {
+  symbol: string;
+  context?: string;
+};
+
+type AnalysisResponse = {
+  symbol: string;
+  signal: "Strong Buy" | "Buy" | "Hold" | "Sell" | "Strong Sell";
+  confidence: number;
+  summary: string;
+  keyFactors: string[];
+};
+
+const VALID_SIGNALS = new Set(["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]);
+
+function sanitizeContext(input: string | undefined) {
+  if (!input) return undefined;
+  return input.replace(/[\r\n\t]+/g, " ").trim().slice(0, 600);
+}
+
+function validateAnalysisRequest(body: unknown): AnalysisRequest {
+  if (!body || typeof body !== "object") {
+    throw new Error("Invalid request payload");
+  }
+
+  const parsed = body as Record<string, unknown>;
+  if (typeof parsed.symbol !== "string" || !parsed.symbol.trim()) {
+    throw new Error("symbol is required");
+  }
+
+  if (parsed.context !== undefined && typeof parsed.context !== "string") {
+    throw new Error("context must be a string");
+  }
+
+  return {
+    symbol: parsed.symbol.trim(),
+    context: sanitizeContext(parsed.context as string | undefined),
+  };
+}
+
+function validateAnalysisOutput(value: unknown): AnalysisResponse {
+  if (!value || typeof value !== "object") {
+    throw new Error("Invalid analysis output");
+  }
+
+  const parsed = value as Record<string, unknown>;
+  const symbol = typeof parsed.symbol === "string" ? parsed.symbol.trim().slice(0, 30) : "";
+  const signal = typeof parsed.signal === "string" ? parsed.signal : "";
+  const confidence = typeof parsed.confidence === "number" ? parsed.confidence : NaN;
+  const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
+  const keyFactors = Array.isArray(parsed.keyFactors)
+    ? parsed.keyFactors.filter((item): item is string => typeof item === "string").map((item) => item.trim())
+    : [];
+
+  if (!symbol || !VALID_SIGNALS.has(signal)) {
+    throw new Error("Invalid symbol or signal");
+  }
+
+  if (!Number.isFinite(confidence) || confidence < 0 || confidence > 100) {
+    throw new Error("Invalid confidence");
+  }
+
+  if (!summary || keyFactors.length === 0) {
+    throw new Error("Invalid summary or key factors");
+  }
+
+  return {
+    symbol,
+    signal: signal as AnalysisResponse["signal"],
+    confidence: Math.round(confidence),
+    summary: summary.slice(0, 1000),
+    keyFactors: keyFactors.slice(0, 5),
+  };
+}
+
+async function generateAnalysisWithGemini(payload: AnalysisRequest): Promise<AnalysisResponse> {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+
+  if (!geminiApiKey) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+  const prompt = [
+    `Provide trading commentary for ${payload.symbol}.`,
+    "Return only the requested JSON structure.",
+    "Include signal, confidence score, summary and 3 key factors.",
+    "Do not provide support or resistance prices.",
+    payload.context ? `Additional context: ${payload.context}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const response = await ai.models.generateContent({
+    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          symbol: { type: Type.STRING },
+          signal: { type: Type.STRING, enum: Array.from(VALID_SIGNALS) },
+          confidence: { type: Type.NUMBER },
+          summary: { type: Type.STRING },
+          keyFactors: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ["symbol", "signal", "confidence", "summary", "keyFactors"],
+      },
+    },
+  });
+
+  if (!response.text) {
+    throw new Error("Gemini returned empty response");
+  }
+
+  const parsed = JSON.parse(response.text) as unknown;
+  return validateAnalysisOutput(parsed);
+}
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  app.use(express.json({ limit: "16kb" }));
 
   // API routes FIRST
   app.get("/api/health", (req, res) => {
@@ -93,6 +218,27 @@ async function startServer() {
     } catch (error) {
       console.error("Error fetching news:", error);
       res.status(500).json({ error: "Failed to fetch news" });
+    }
+  });
+
+  app.post("/api/analysis", async (req, res) => {
+    try {
+      const payload = validateAnalysisRequest(req.body);
+      const analysis = await generateAnalysisWithGemini(payload);
+
+      res.json(analysis);
+    } catch (error) {
+      console.error("Analysis error:", error);
+      if (error instanceof SyntaxError) {
+        return res.status(400).json({ error: "Invalid JSON body" });
+      }
+
+      const message = error instanceof Error ? error.message : "Analysis unavailable";
+      if (message.includes("required") || message.includes("Invalid request")) {
+        return res.status(400).json({ error: message });
+      }
+
+      return res.status(503).json({ error: "analysis unavailable" });
     }
   });
 
@@ -218,6 +364,14 @@ async function startServer() {
         res.status(500).json({ error: "Internal server error" });
       }
     }
+  });
+
+
+  app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof SyntaxError && "body" in err) {
+      return res.status(400).json({ error: "Invalid JSON body" });
+    }
+    return next(err);
   });
 
   // Vite middleware for development
