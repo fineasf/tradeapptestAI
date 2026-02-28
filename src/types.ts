@@ -29,3 +29,38 @@ export interface AIAnalysisResult {
   summary: string;
   keyFactors: string[];
 }
+
+export interface AICommentaryResult {
+  symbol: string;
+  signal: "Strong Buy" | "Buy" | "Hold" | "Sell" | "Strong Sell";
+  confidence: number;
+  summary: string;
+  keyFactors: string[];
+}
+
+export interface TechnicalLevelInfo {
+  price: number;
+  confidence: number;
+  touches: number;
+}
+
+export interface TechnicalLevelsResponse {
+  supportLevels: number[];
+  resistanceLevels: number[];
+  metadata: {
+    method: string;
+    confidence: number;
+    touchCounts: Record<string, number>;
+    detailedLevels: {
+      support: TechnicalLevelInfo[];
+      resistance: TechnicalLevelInfo[];
+    };
+    lastUpdated: string;
+    settings: {
+      swingLookback: number;
+      proximityPercent: number;
+      maxLevelsPerSide: number;
+      useVolumeConfirmation: boolean;
+    };
+  };
+}
