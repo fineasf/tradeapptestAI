@@ -107,6 +107,8 @@ export default function App() {
   }, [selectedSymbol]);
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     async function fetchLevels() {
       setLevels(null);
       try {
@@ -114,7 +116,9 @@ export default function App() {
           timeframe,
           lookback: "200",
         });
-        const response = await fetch(`/api/levels/${selectedSymbol}?${params.toString()}`);
+        const response = await fetch(`/api/levels/${selectedSymbol}?${params.toString()}`, {
+          signal: abortController.signal,
+        });
         if (!response.ok) {
           throw new Error(`Failed to fetch levels: ${response.status}`);
         }
@@ -122,12 +126,19 @@ export default function App() {
         const result = (await response.json()) as TechnicalLevelsResponse;
         setLevels(result);
       } catch (error) {
+        if (abortController.signal.aborted) {
+          return;
+        }
         console.error("Failed to fetch technical levels", error);
         setLevels(null);
       }
     }
 
     fetchLevels();
+
+    return () => {
+      abortController.abort();
+    };
   }, [selectedSymbol, timeframe]);
 
   useEffect(() => {

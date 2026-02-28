@@ -23,11 +23,14 @@ const TIMEFRAMES = [
   { label: '1h', value: '60' },
 ];
 
+const getTimeframeLabel = (value: string) => TIMEFRAMES.find((timeframe) => timeframe.value === value)?.label || value;
+
 export function Chart({ symbol, timeframe, onTimeframeChange, supportLevels = [], resistanceLevels = [], watchlist = [], onToggleWatchlist }: ChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const [loading, setLoading] = useState(false);
+  const timeframeLabel = getTimeframeLabel(timeframe);
 
   const isWatchlisted = watchlist.some(s => s.symbol === symbol);
 
@@ -121,7 +124,7 @@ export function Chart({ symbol, timeframe, onTimeframeChange, supportLevels = []
         lineWidth: 2,
         lineStyle: 2,
         axisLabelVisible: true,
-        title: 'Support',
+        title: `Support (${timeframeLabel})`,
       });
     });
 
@@ -132,7 +135,7 @@ export function Chart({ symbol, timeframe, onTimeframeChange, supportLevels = []
         lineWidth: 2,
         lineStyle: 2,
         axisLabelVisible: true,
-        title: 'Resistance',
+        title: `Resistance (${timeframeLabel})`,
       });
     });
 
