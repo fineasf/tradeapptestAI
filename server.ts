@@ -23,6 +23,10 @@ type AnalysisResponse = {
 
 const VALID_SIGNALS = new Set(["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"]);
 
+const LMSTUDIO_DEFAULT_URL = "http://localhost:1234/api/v1/chat";
+const LMSTUDIO_DEFAULT_MODEL = "qwen3.5-27b-claude-4.6-opus-reasoning-distilled";
+const LMSTUDIO_TIMEOUT_MS = 10_000;
+
 function sanitizeContext(input: string | undefined) {
   if (!input) return undefined;
   return input.replace(/[\r\n\t]+/g, " ").trim().slice(0, 600);
@@ -81,6 +85,95 @@ function validateAnalysisOutput(value: unknown): AnalysisResponse {
     summary: summary.slice(0, 1000),
     keyFactors: keyFactors.slice(0, 5),
   };
+}
+
+async function generateAnalysisWithLMStudio(payload: AnalysisRequest): Promise<AnalysisResponse> {
+  const lmStudioUrl = process.env.LMSTUDIO_URL || LMSTUDIO_DEFAULT_URL;
+  const lmStudioModel = process.env.LMSTUDIO_MODEL || LMSTUDIO_DEFAULT_MODEL;
+
+  const systemPrompt = [
+    "You are a trading analysis assistant.",
+    "Respond ONLY with a valid JSON object — no markdown, no extra explanation.",
+    'The JSON must include: symbol (string), signal (one of "Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"),',
+    "confidence (number 0-100), summary (string), keyFactors (array of 3 to 5 strings).",
+    "Do not include support or resistance prices.",
+  ].join(" ");
+
+  const userPrompt = [
+    `Provide trading commentary for ${payload.symbol}.`,
+    payload.context ? `Additional context: ${payload.context}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), LMSTUDIO_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(lmStudioUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: lmStudioModel,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(
+        `LM Studio request timed out — ensure LM Studio is running and a model is loaded at ${lmStudioUrl}`,
+      );
+    }
+    throw new Error(
+      `Unable to reach LM Studio at ${lmStudioUrl} — ensure LM Studio is running and the server is started`,
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`LM Studio returned HTTP ${response.status}: ${text.slice(0, 200)}`);
+  }
+
+  const json = (await response.json()) as Record<string, unknown>;
+  const choices = json.choices;
+  if (!Array.isArray(choices) || choices.length === 0) {
+    throw new Error("LM Studio returned no choices");
+  }
+
+  const message = (choices[0] as Record<string, unknown>).message as Record<string, unknown> | undefined;
+  const rawContent = typeof message?.content === "string" ? message.content.trim() : "";
+
+  if (!rawContent) {
+    throw new Error("LM Studio returned empty content");
+  }
+
+  // Strip optional markdown code fences (```json ... ```) that some models include
+  const fenceMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  const jsonText = fenceMatch ? fenceMatch[1].trim() : rawContent;
+
+  const parsed = JSON.parse(jsonText) as unknown;
+  return validateAnalysisOutput(parsed);
+}
+
+function handleLMStudioError(error: unknown, res: express.Response): express.Response {
+  const message = error instanceof Error ? error.message : "Analysis unavailable";
+  if (message.includes("required") || message.includes("Invalid request")) {
+    return res.status(400).json({ error: message });
+  }
+  if (message.includes("Unable to reach") || message.includes("timed out")) {
+    return res.status(503).json({
+      error: message,
+      hint: "Start LM Studio, load a model, and enable the local server on port 1234.",
+    });
+  }
+  return res.status(503).json({ error: "LM Studio analysis unavailable" });
 }
 
 async function generateAnalysisWithGemini(payload: AnalysisRequest): Promise<AnalysisResponse> {
@@ -224,8 +317,20 @@ async function startServer() {
   app.post("/api/analysis", async (req, res) => {
     try {
       const payload = validateAnalysisRequest(req.body);
-      const analysis = await generateAnalysisWithGemini(payload);
-
+      let analysis: AnalysisResponse;
+      try {
+        analysis = await generateAnalysisWithGemini(payload);
+      } catch (geminiError) {
+        const msg = geminiError instanceof Error ? geminiError.message : "";
+        const isLocationError =
+          msg.includes("FAILED_PRECONDITION") || msg.includes("location is not supported");
+        if (isLocationError) {
+          console.warn("Gemini unavailable due to location restriction — falling back to LM Studio");
+          analysis = await generateAnalysisWithLMStudio(payload);
+        } else {
+          throw geminiError;
+        }
+      }
       res.json(analysis);
     } catch (error) {
       console.error("Analysis error:", error);
@@ -237,8 +342,28 @@ async function startServer() {
       if (message.includes("required") || message.includes("Invalid request")) {
         return res.status(400).json({ error: message });
       }
+      if (message.includes("Unable to reach") || message.includes("timed out")) {
+        return res.status(503).json({
+          error: message,
+          hint: "Start LM Studio, load a model, and enable the local server on port 1234.",
+        });
+      }
 
       return res.status(503).json({ error: "analysis unavailable" });
+    }
+  });
+
+  app.post("/api/analyze-lmstudio", async (req, res) => {
+    try {
+      const payload = validateAnalysisRequest(req.body);
+      const analysis = await generateAnalysisWithLMStudio(payload);
+      res.json(analysis);
+    } catch (error) {
+      console.error("LM Studio analysis error:", error);
+      if (error instanceof SyntaxError) {
+        return res.status(400).json({ error: "Invalid JSON body" });
+      }
+      return handleLMStudioError(error, res);
     }
   });
 
