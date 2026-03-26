@@ -16,38 +16,40 @@ This app shows market data, technical levels, and an AI report panel.
    npm install
    ```
 
-2. Create your local server env file from the template:
+2. Supply your Gemini API key. Choose **one** of the options below:
+
+   **Option A – `.env.local` file (recommended):** Copy the template and fill in your key:
 
    ```bash
    cp .env.example .env.local
    ```
 
-3. Put your Gemini API key in `.env.local` (this is the exact position):
-
    ```env
    GEMINI_API_KEY="YOUR_REAL_KEY_HERE"
    ```
 
+   **Option B – Windows system/user environment variable:** If `GEMINI_API_KEY` is already set in your Windows environment variables, no `.env` file is needed. Node.js inherits it automatically when you run `npm run dev`.
+
    - The key is read by `server.ts` only.
    - Do **not** put API keys in frontend files such as `src/App.tsx`.
 
-4. (Optional) Choose model in `.env.local`:
+3. (Optional) Choose model in `.env.local`:
 
    ```env
    GEMINI_MODEL="gemini-2.5-flash"
    ```
 
-5. Start the app:
+4. Start the app:
 
    ```bash
    npm run dev
    ```
 
-6. Open `http://localhost:3000`.
+5. Open `http://localhost:3000`.
 
 ## How to activate the AI report
 
-- The AI report is activated automatically when `GEMINI_API_KEY` is present in your server env (`.env.local` or deployment env).
+- The AI report is activated automatically when `GEMINI_API_KEY` is present in your server environment — via `.env.local`, `.env`, or a system/user environment variable (e.g. Windows environment variables).
 - The frontend sends requests to `POST /api/analysis`.
 - If key/model is missing or provider fails, the UI shows explicit **"Analysis unavailable"** fallback messaging while technical levels still load.
 

@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import { getNews } from "./src/server/newsService";
 import { computeTechnicalLevels } from "./src/server/technicalLevels";
 
-dotenv.config();
+dotenv.config({ path: [".env.local", ".env"] });
 
 type AnalysisRequest = {
   symbol: string;
