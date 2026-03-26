@@ -158,8 +158,16 @@ async function generateAnalysisWithLMStudio(payload: AnalysisRequest): Promise<A
   const fenceMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   const jsonText = fenceMatch ? fenceMatch[1].trim() : rawContent;
 
-  const parsed = JSON.parse(jsonText) as unknown;
+  const parsed = parseJsonSafely(jsonText, "LM Studio");
   return validateAnalysisOutput(parsed);
+}
+
+function parseJsonSafely(raw: string, source: "Gemini" | "LM Studio"): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    throw new Error(`${source} returned invalid JSON`);
+  }
 }
 
 function handleLMStudioError(error: unknown, res: express.Response): express.Response {
@@ -217,7 +225,7 @@ async function generateAnalysisWithGemini(payload: AnalysisRequest): Promise<Ana
     throw new Error("Gemini returned empty response");
   }
 
-  const parsed = JSON.parse(response.text) as unknown;
+  const parsed = parseJsonSafely(response.text, "Gemini");
   return validateAnalysisOutput(parsed);
 }
 
